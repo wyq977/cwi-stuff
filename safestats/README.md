@@ -73,3 +73,22 @@ checkLong <- designSafeTwoProportions(
 
 * why remove safetest in 0.9.0? Ask Alexandar
 * 
+
+
+## calculateSequential2x2E
+
+In the simpliest settings, `pilot = TRUE`. No restriction was placed on Ha.
+
+What is the eVariable??
+
+In the for loop (`seq_along(aSample)`), e value is calculated and updated with
+`updateETwoProportions` (Eq. 4.2 in Turner et al. paper)
+
+
+```math
+\theta_a^* = \frac{n_{a1} + prior_{a1}}{n_a + prior_{a}}
+```
+
+TODO: speed up the calculation by switch?
+
+
