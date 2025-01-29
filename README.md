@@ -4,4 +4,6 @@
 
 ## Weekly Summary and Goals
 
+sdasjdlkas
+
 See [weekly](./weekly)
