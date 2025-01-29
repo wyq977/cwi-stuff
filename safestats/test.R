@@ -1,28 +1,27 @@
-styler::style_file("./safestats/test.R")
 set.seed(123)
 
-ya <- rbinom(100, 1, 0.5)
-yb <- rbinom(100, 1, 0.3)
-
-shape1 <- shape2 <- 0.18
-
-esMin <- 0.2
-
-# After
+nData <- 1e2
+trueThetaA <- 0.5
+trueThetaB <- 0.3
+na <- nb <- 1
 gridSize <- 1e3
 K <- 1 / gridSize # precision K
+shape1 <- shape2 <- 0.18
+esMin <- 0.2 # delta, assmued to be between (0, 1)
+
+ya <- rbinom(nData, na, trueThetaA)
+yb <- rbinom(nData, nb, trueThetaB)
+
 rhoGrid <- seq(K / (1 - esMin), 1 - K, length.out = gridSize)
-# rhoGridDensity <- stats::dbeta(x = rhoGrid, shape1. shape2)
+# rhoGridDensity <- stats::dbeta(x = rhoGrid, shape1, shape2)
 
 # prepare prob. grid = rhoGrid * (1 - esMin)
 thetaAgrid <- rhoGrid * (1 - esMin)
 
 # prior density for thetaA at each grid points with normalization
-thetaAgridDensity <- stats::dbeta(thetaAgrid, shape1, shape2)
-thetaAgridDensity <- thetaAgridDensity / sum(thetaAgridDensity)
-
-sum(thetaAgridDensity)
-
+# rho = thetaA / (1 - esMin) ~ Beta(shape1, shape2)
+thetaADensity <- stats::dbeta(rhoGrid, shape1, shape2)
+thetaADensity <- thetaADensity / sum(thetaADensity)
 
 likelihoodBernoulli <- function(x, theta) {
   # Use log and exp to avoid underflow/overflow
@@ -30,39 +29,25 @@ likelihoodBernoulli <- function(x, theta) {
   return(exp(loglikelihood))
 }
 
-# prior times likelihood
+thetaB <- thetaA <- rep(0.5, length(ya))
 
-likelihoodTimesPrior <- rep(0, length(thetaAgrid))
+for (i in 1:length(ya)) {
+  # thetaADensity is the prior density, gets updated at each iteration
+  # calculate likelihood times prior
+  likelihoodTimesPrior <- likelihoodBernoulli(ya[i], thetaAgrid) * thetaADensity
 
-x <- 1
+  # update posterior density
+  thetaADensity <- likelihoodTimesPrior / sum(likelihoodTimesPrior)
 
-# Vectorized computation
-likelihoodTimesPrior <- likelihoodBernoulli(x, thetaAgrid) * thetaAgridDensity
+  # prediction for theta
+  thetaA[i] <- thetaAgrid %*% thetaADensity
+}
 
-# Normalize to compute posterior density
-posteriorDensity <- likelihoodTimesPrior / sum(likelihoodTimesPrior)
 
-# prior for theta
-# FIXME: why not 0.5!!!
-thetaAPrior <- thetaAgrid %*% thetaAgridDensity
-thetaAPrior
+thetaB <- thetaA + esMin
 
-# posterior for theta
-thetaAPosterior <- thetaAgrid %*% posteriorDensity
 
-plot(rhoGrid,
-  thetaAgridDensity,
-  type = "l", col = "blue", lwd = 2, xlab = "thetaA", ylab = "Density",
-  main = "Density for theta"
-)
-abline(v = thetaAPrior, col = "blue")
+plot(seq(length(ya)), thetaA, col = "blue", ylim = c(0, 1))
+points(seq(length(ya)), thetaB, col = "red")
+abline(h = trueThetaA)
 
-lines(rhoGrid,
-  posteriorDensity,
-  type = "l", col = "red", lwd = 2, xlab = "thetaA", ylab = "Density",
-)
-abline(v = thetaAPosterior, col = "red")
-legend("topleft",
-  legend = c("Posterior", "Prior"),
-  col = c("red", "blue"), lty = 1:2, cex = 0.8
-)
